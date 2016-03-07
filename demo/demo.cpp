@@ -10,11 +10,11 @@
 #include <vector>
 
 // DBoW2
-#include "DBoW2.h" // defines Surf64Vocabulary and Surf64Database
+#include "DBoW2/DBoW2.h" // defines Surf64Vocabulary and Surf64Database
 
-#include "DUtils.h"
-#include "DUtilsCV.h" // defines macros CVXX
-#include "DVision.h"
+#include "DUtils/DUtils.h"
+#include "DUtilsCV/DUtilsCV.h" // defines macros CVXX
+#include "DVision/DVision.h"
 
 // OpenCV
 #include <opencv/cv.h>

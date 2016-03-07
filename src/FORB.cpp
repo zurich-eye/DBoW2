@@ -13,9 +13,9 @@
 #include <stdint.h>
 #include <limits.h>
 
-#include "DUtils.h"
-#include "DVision.h"
-#include "FORB.h"
+#include "DUtils/DUtils.h"
+#include "DVision/DVision.h"
+#include "DBoW2/FORB.h"
 
 using namespace std;
 
