@@ -19,11 +19,18 @@
 #include <algorithm>
 #include <opencv/cv.h>
 
-#include "FeatureVector.h"
-#include "BowVector.h"
-#include "ScoringObject.h"
-
+#include <boost/dynamic_bitset.hpp>
 #include <DUtils/DUtils.h>
+#include <glog/logging.h>
+#include <google/protobuf/io/coded_stream.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+
+#include "BowVector.h"
+#include "FeatureVector.h"
+#include "node.pb.h"
+#include "ScoringObject.h"
+#include "vocabulary.pb.h"
+#include "word.pb.h"
 
 using namespace std;
 
@@ -245,6 +252,8 @@ public:
   virtual void save(cv::FileStorage &fs, 
     const std::string &name = "vocabulary") const;
   
+  void saveProto(const std::string& file_name) const;
+
   /**
    * Loads the vocabulary from a file storage node
    * @param fn first node
@@ -254,6 +263,8 @@ public:
   virtual void load(const cv::FileStorage &fs, 
     const std::string &name = "vocabulary");
   
+  void loadProto(const std::string& file_name);
+
   /** 
    * Stops those words whose weight is below minWeight.
    * Words are stopped by setting their weight to 0. There are not returned
@@ -1328,10 +1339,17 @@ void TemplatedVocabulary<TDescriptor,F>::save(const std::string &filename) const
 template<class TDescriptor, class F>
 void TemplatedVocabulary<TDescriptor,F>::load(const std::string &filename)
 {
-  cv::FileStorage fs(filename.c_str(), cv::FileStorage::READ);
-  if(!fs.isOpened()) throw string("Could not open file ") + filename;
-  
-  this->load(fs);
+  LOG(INFO) << filename << " " << filename.substr(filename.size() - 6);
+  if (filename.substr(filename.size() - 6) == ".proto")
+  {
+    loadProto(filename);
+  }
+  else
+  {
+    cv::FileStorage fs(filename.c_str(), cv::FileStorage::READ);
+    CHECK(fs.isOpened());
+    this->load(fs);
+  }
 }
 
 // --------------------------------------------------------------------------
@@ -1430,6 +1448,75 @@ void TemplatedVocabulary<TDescriptor,F>::save(cv::FileStorage &f,
   f << "}";
 
 }
+
+template<class TDescriptor, class F>
+void TemplatedVocabulary<TDescriptor,F>::saveProto(
+    const std::string& file_name) const
+{
+  std::ofstream file(file_name);
+  CHECK(file.is_open()) << "Couldn't open " << file_name;
+  proto::Vocabulary vocabulary_proto;
+
+  vocabulary_proto.set_k(m_k);
+  vocabulary_proto.set_l(m_L);
+  vocabulary_proto.set_scoring_type(m_scoring);
+  vocabulary_proto.set_weighting_type(m_weighting);
+
+  vector<NodeId> parents, children;
+  vector<NodeId>::const_iterator pit;
+
+  parents.push_back(0); // root
+
+  while(!parents.empty())
+  {
+    NodeId pid = parents.back();
+    parents.pop_back();
+
+    const Node& parent = m_nodes[pid];
+    children = parent.children;
+
+    for(pit = children.begin(); pit != children.end(); pit++)
+    {
+      const Node& child = m_nodes[*pit];
+
+      proto::Node* node_proto = vocabulary_proto.add_nodes();
+      CHECK_NOTNULL(node_proto);
+      node_proto->set_node_id(child.id);
+      node_proto->set_parent_id(pid);
+      node_proto->set_weight(child.weight);
+
+      // For now only works with BRIEF.
+      std::vector<unsigned long> descriptor_blocks(
+          child.descriptor.num_blocks());
+      boost::to_block_range(child.descriptor, descriptor_blocks.begin());
+
+      for (const unsigned long block : descriptor_blocks)
+      {
+        node_proto->add_node_descriptor(block);
+      }
+
+      // add to parent list
+      if(!child.isLeaf())
+      {
+        parents.push_back(*pit);
+      }
+    }
+  }
+
+  typename vector<Node*>::const_iterator wit;
+  for(wit = m_words.begin(); wit != m_words.end(); wit++)
+  {
+    WordId id = wit - m_words.begin();
+
+    proto::Word* word_proto = vocabulary_proto.add_words();
+    CHECK_NOTNULL(word_proto);
+    word_proto->set_word_id(id);
+    word_proto->set_node_id((*wit)->id);
+  }
+
+  CHECK(vocabulary_proto.SerializeToOstream(&file));
+}
+
 
 // --------------------------------------------------------------------------
 
