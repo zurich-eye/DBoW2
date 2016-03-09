@@ -7,10 +7,13 @@
  *
  */
 
-#include "DBoW2/FeatureVector.h"
 #include <map>
 #include <vector>
 #include <iostream>
+
+#include <glog/logging.h>
+
+#include "DBoW2/FeatureVector.h"
 
 namespace DBoW2 {
 
@@ -78,6 +81,29 @@ std::ostream& operator<<(std::ostream &out,
   }
   
   return out;  
+}
+
+void FeatureVector::filter(const std::vector<unsigned int>& remaining_indices)
+{
+  typedef std::map<unsigned long, NodeId> InverseMap;
+  InverseMap inverse_map;
+  for (const value_type& node_indices : *this)
+  {
+    for (const unsigned int index : node_indices.second)
+    {
+      CHECK(inverse_map.emplace(index, node_indices.first).second);
+    }
+  }
+
+  FeatureVector filtered;
+  for (const unsigned int index : remaining_indices)
+  {
+    InverseMap::iterator found = inverse_map.find(index);
+    CHECK(found != inverse_map.end());
+    filtered.addFeature(found->second, found->first);
+  }
+
+  swap(filtered);
 }
 
 // ---------------------------------------------------------------------------
