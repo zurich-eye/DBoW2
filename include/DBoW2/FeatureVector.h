@@ -17,7 +17,7 @@
 
 namespace DBoW2 {
 
-/// Vector of nodes with indexes of local features
+/// Vector of nodes with indices of local features
 class FeatureVector: 
   public std::map<NodeId, std::vector<unsigned int> >
 {
@@ -47,7 +47,9 @@ public:
    * @param v feature vector
    */
   friend std::ostream& operator<<(std::ostream &out, const FeatureVector &v);
-    
+
+  // Remove all entries corresponding to non-remaining indices.
+  void filter(const std::vector<unsigned int>& remaining_indices);
 };
 
 } // namespace DBoW2
