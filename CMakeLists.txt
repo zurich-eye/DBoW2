@@ -16,6 +16,11 @@ set(SRCS
 
 add_definitions("-std=c++11")
 
+find_package(OpenCV 2 REQUIRED core imgproc features2d ml nonfree)
+include_directories(include/DUtils include/DUtilsCV include/DVision ${OpenCV_INCLUDE_DIRS})
+list(APPEND catkin_LIBRARIES ${OpenCV_LIBS})
+message(STATUS "catkin_LIBRARIES: ${catkin_LIBRARIES}")
+
 cs_add_library(${PROJECT_NAME} ${SRCS} ${PROTO_SRCS})
 
 cs_add_executable(voc_to_proto src/voc_to_proto.cpp)
